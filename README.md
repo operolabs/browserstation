@@ -60,13 +60,16 @@
 
 > Note: You must set an API key for authentication and security.
 
+On macOS (Apple Silicon):
+
 ```bash
 chmod +x scripts/quickstart.sh
 ./scripts/quickstart.sh --arm --api-key="your-secret-key"
 
 ```
 
-_For Linux: use `./scripts/quickstart.sh --x86` instead._
+_For macOS (Intel), Windows (using WSL), and Linux: use `./scripts/quickstart.sh --x86 --api-key="your-secret-key"` instead._
+
 
 ### 3. Test
 
