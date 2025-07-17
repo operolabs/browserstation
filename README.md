@@ -8,12 +8,12 @@
   <p>Open-source, infra-agnostic hosting framework for browser agents. Debug locally. Scale to production.</p>
   <p>
     <a href="https://github.com/operolabs/browserstation/stargazers">
-      <img src="https://img.shields.io/github/stars/operolabs/browserstation?style=social" alt="GitHub stars"/>
+      <img src="https://img.shields.io/github/stars/operolabs/browserstation?style=social?cacheSeconds=1" alt="GitHub stars"/>
     </a>
     <a href="https://x.com/operolabs" alt="Twitter account">
-        <img src="https://img.shields.io/twitter/follow/OperoLabs?style=social" /></a>
+        <img src="https://img.shields.io/twitter/follow/OperoLabs?style=social?cacheSeconds=1" /></a>
     <a href="https://github.com/operolabs/browserstation/blob/main/LICENSE">
-      <img src="https://img.shields.io/github/license/operolabs/browserstation" alt="License"/>
+      <img src="https://img.shields.io/github/license/operolabs/browserstation?cacheSeconds=1" alt="License"/>
     </a>
   </p>
 </div>
