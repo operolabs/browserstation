@@ -112,26 +112,27 @@ CDP access allows robust control for automation, proxy support, and live screen 
 
 ## Architecture
 
-### Sidecar Pattern & WebSocket Proxy Design
+### Sidecar Pattern & WebSocket Proxy
 
-This system uses a clean, modular architecture built on **RayKube**, which manages a Kubernetes cluster consisting of a head node and multiple worker nodes. The design prioritizes simplicity, configurability, and ease of hacking and extension.
+The system is built on **RayKube**, which manages a Kubernetes cluster with a head node and multiple worker nodes. The architecture is designed to be simple, configurable, and easy to extend.
 
 <p align="center">
-  <img src="./assets/architecture.png" alt="BrowserStation Architecture" width="60%">
+  <img src="./assets/architecture.png" alt="BrowserStation Architecture" width="55%">
 </p>
 
-1. **Sidecar Pattern**
+#### 1. Sidecar Pattern
 
-Each worker node runs two containers:
+Each worker pod runs two containers:
 
-- **Ray Worker Container** (primary): Hosts the `BrowserActor`, which manages the browser lifecycle, processes API requests, handles resource allocation, and communicates with Chrome via `localhost:9222`.
-- **Chrome Container** (sidecar): Runs a headless Chrome instance with remote debugging enabled, exposing the Chrome DevTools Protocol (CDP) on port 9222. This ensures each pod provides a fully isolated browser session.
+- **Ray Worker (main container):** Hosts the `BrowserActor`, which manages browser lifecycle, handles API requests, allocates resources, and communicates with Chrome via `localhost:9222`.
+- **Chrome (sidecar container):** Runs headless Chrome with remote debugging enabled, exposing the Chrome DevTools Protocol (CDP) on port 9222. Each pod provides an isolated browser instance.
 
-2. **Unified CDP WebSocket Proxy**
+#### 2. Unified CDP WebSocket Proxy
 
-Clients connect to `/ws/browsers/{id}/devtools/browser` on the head node. FastAPI validates the browser ID and confirms the corresponding Chrome instance is ready. Once validated, a bidirectional WebSocket proxy is established to the Chrome container in the appropriate worker pod.
+Clients connect to `/ws/browsers/{id}/devtools/browser` on the head node. FastAPI validates the browser ID and ensures the corresponding Chrome instance is ready. It then proxies a bidirectional WebSocket to the Chrome container in the appropriate worker pod.
 
-This proxy provides direct access to the Chrome DevTools Protocol, allowing automation tools to inspect and control the browser transparently and efficiently.
+This setup enables full access to CDP, allowing automation tools to control and inspect the browser seamlessly.
+
 
 
 ## Production Deployments
