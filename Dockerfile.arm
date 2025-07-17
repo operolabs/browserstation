@@ -1,0 +1,13 @@
+FROM rayproject/ray:2.47.1-cpu
+
+# Install required Python packages
+RUN pip install --no-cache-dir "fastapi[standard]" websockets httpx uvicorn
+
+# Set working directory
+WORKDIR /opt/app
+
+# Copy application code
+COPY app/ ./app/
+
+# Environment variables
+ENV PYTHONUNBUFFERED=1

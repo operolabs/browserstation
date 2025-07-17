@@ -1,0 +1,17 @@
+[project]
+name = "browserstation"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi[standard]>=0.116.1",
+    "pydantic-settings>=2.0.0",
+    "websockets>=11.0",
+    "httpx>=0.24.0",
+    "ray>=2.47.1",
+    "uvicorn>=0.22.0",
+    "langchain>=0.3.26",
+    "langgraph>=0.5.3",
+    "browser-use>=0.5.5",
+]
