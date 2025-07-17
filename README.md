@@ -10,7 +10,7 @@
     <a href="https://github.com/operolabs/browserstation/stargazers">
       <img src="https://img.shields.io/github/stars/operolabs/browserstation?style=social" alt="GitHub stars"/>
     </a>
-    <a href="https://x.com/operolabs" alt="Twitter Follow">
+    <a href="https://x.com/operolabs" alt="Twitter account">
         <img src="https://img.shields.io/twitter/follow/OperoLabs?style=social" /></a>
     <a href="https://github.com/operolabs/browserstation/blob/main/LICENSE">
       <img src="https://img.shields.io/github/license/operolabs/browserstation" alt="License"/>
