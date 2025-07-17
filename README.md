@@ -5,15 +5,15 @@
   style="margin: 20px auto;"
 >
   <h1>Browserstation</h1>
-  <p>Open-source, infra-agnostic browser agent framework. Debug locally. Scale to production.</p>
+  <p>Open-source, infra-agnostic hosting framework for browser agents. Debug locally. Scale to production.</p>
   <p>
     <a href="https://github.com/operolabs/browserstation/stargazers">
-      <img src="https://img.shields.io/github/stars/operolabs/browserstation?style=social" alt="GitHub stars"/>
+      <img src="https://img.shields.io/github/stars/operolabs/browserstation?style=social?cacheSeconds=1" alt="GitHub stars"/>
     </a>
-    <a href="https://x.com/operolabs" alt="Twitter Follow">
-        <img src="https://img.shields.io/twitter/follow/OperoLabs?style=social" /></a>
+    <a href="https://x.com/operolabs" alt="Twitter account">
+        <img src="https://img.shields.io/twitter/follow/OperoLabs?style=social?cacheSeconds=1" /></a>
     <a href="https://github.com/operolabs/browserstation/blob/main/LICENSE">
-      <img src="https://img.shields.io/github/license/operolabs/browserstation" alt="License"/>
+      <img src="https://img.shields.io/github/license/operolabs/browserstation?cacheSeconds=1" alt="License"/>
     </a>
   </p>
 </div>
@@ -37,13 +37,16 @@
 
 > Note: You must set an API key for authentication and security.
 
+On macOS (Apple Silicon):
+
 ```bash
 chmod +x scripts/quickstart.sh
 ./scripts/quickstart.sh --arm --api-key="your-secret-key"
 
 ```
 
-_For Linux: use `./scripts/quickstart.sh --x86` instead._
+_For macOS (Intel), Windows (using WSL), and Linux: use `./scripts/quickstart.sh --x86 ..."` instead._
+
 
 ### 3. Test
 
@@ -89,17 +92,28 @@ CDP access allows robust control for automation, proxy support, and live screen 
 
 ## Architecture
 
-### Sidecar Pattern & WebSocket Proxy Design
+### Sidecar Pattern & WebSocket Proxy
 
-This architecture is designed to be simple and hackable (configurable) relying on **RayKube** to orchestrate Kubernetes with a head node and multiple worker nodes. 
+The system is built on **RayKube**, which manages a Kubernetes cluster with a head node and multiple worker nodes. The architecture is designed to be simple, configurable, and easy to extend.
 
-![BrowserStation Architecture](./assets/architecture.png)
+<p align="center">
+  <img src="./assets/architecture.png" alt="BrowserStation Architecture" width="55%">
+</p>
 
-1) **Sidecar pattern**
-Each worker runs two containers: a Ray Worker Container (main) that hosts the BrowserActor responsible for managing browser lifecycle, handling API requests, allocating resources, and communicating with Chrome via localhost:9222; and a Chrome Container (sidecar) that runs headless Chrome with remote debugging enabled, providing an isolated browser instance per pod and exposing the Chrome DevTools Protocol on port 9222.
+#### 1. Sidecar Pattern
 
-2) **Unified CDP webscoket thorugh a proxy**
-In the WebSocket proxy flow, a client connects to the endpoint /ws/browsers/{id}/devtools/browser on the head node. FastAPI then validates the provided browser ID and ensures that the corresponding Chrome instance is ready. Once validated, it establishes a bidirectional WebSocket proxy to the Chrome container running in the associated worker pod. This proxy enables full access to the Chrome DevTools Protocol, allowing automation tools to control and inspect the browser seamlessly.
+Each worker pod runs two containers:
+
+- **Ray Worker (main container):** Hosts the `BrowserActor`, which manages browser lifecycle, handles API requests, allocates resources, and communicates with Chrome via `localhost:9222`.
+- **Chrome (sidecar container):** Runs headless Chrome with remote debugging enabled, exposing the Chrome DevTools Protocol (CDP) on port 9222. Each pod provides an isolated browser instance.
+
+#### 2. Unified CDP WebSocket Proxy
+
+Clients connect to `/ws/browsers/{id}/devtools/browser` on the head node. FastAPI validates the browser ID and ensures the corresponding Chrome instance is ready. It then proxies a bidirectional WebSocket to the Chrome container in the appropriate worker pod.
+
+This setup enables full access to CDP, allowing automation tools to control and inspect the browser seamlessly.
+
+
 
 ## Production Deployments
 
