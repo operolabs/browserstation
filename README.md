@@ -24,29 +24,6 @@
 - **Cost Efficient**: Up to 85% lower cost on EKS at scale vs. managed solutions like Browserbase.
 - **Hackable** – A barebones core that’s easy to customize.
 
-
-## Table of Contents
-
-- [Features](#features)
-- [Quick Start](#quick-start)
-- [API Endpoints](#api-endpoints)
-- [Architecture](#architecture)
-- [Production Deployments](#production-deployments)
-- [Roadmap](#roadmap)
-- [Contributing](#contributing)
-- [License](#license)
-
-## Features
-
-| Feature                   | Description                                                         |
-|---------------------------|---------------------------------------------------------------------|
-| **Infra Agnostic**        | Deploy on your own Kubernetes cluster or local dev environment.     |
-| **Full CDP Access**       | Direct Chrome DevTools Protocol WebSocket for maximum control.      |
-| **API Security**          | API key support (first layer).                                      |
-| **Monitoring**            | Built-in metrics for all running browsers and live CPU usage.       |
-| **Automation Ready**      | Integrates with Browser-use, Langchain, CrewAI, and more.           |
-| **No Vendor Lock-in**     | You own your infrastructure and data.                               |
-
 ## Quick Start
 
 ### 1. Prerequisites
