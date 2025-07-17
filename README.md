@@ -68,7 +68,7 @@ chmod +x scripts/quickstart.sh
 
 ```
 
-_For macOS (Intel), Windows (using WSL), and Linux: use `./scripts/quickstart.sh --x86 --api-key="your-secret-key"` instead._
+_For macOS (Intel), Windows (using WSL), and Linux: use `./scripts/quickstart.sh --x86 ..."` instead._
 
 
 ### 3. Test
