@@ -5,7 +5,7 @@
   style="margin: 20px auto;"
 >
   <h1>Browserstation</h1>
-  <p>Open-source, infra-agnostic browser agent framework. Debug locally. Scale to production.</p>
+  <p>Open-source, infra-agnostic hosting framework for browser agents. Debug locally. Scale to production.</p>
   <p>
     <a href="https://github.com/operolabs/browserstation/stargazers">
       <img src="https://img.shields.io/github/stars/operolabs/browserstation?style=social" alt="GitHub stars"/>
