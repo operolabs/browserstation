@@ -6,7 +6,9 @@ from uuid import UUID
 class Health(BaseModel):
     status: str
     ray_status: bool
-    active_browsers: int
+    browsers: dict  # {"alive": count, "pending": count, "dead": count}
+    cluster: dict   # Ray cluster resources
+    available: dict # Ray available resources  
 
 class BrowserInfo(BaseModel):
     browser_id: UUID
@@ -23,6 +25,4 @@ class BrowserStatus(BaseModel):
     status: str
 
 class BrowserList(BaseModel):
-    total_cpus: Optional[int]
-    available_cpus: Optional[int]
-    browsers: List[BrowserStatus]
+    browsers: List[dict] 

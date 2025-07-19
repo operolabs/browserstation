@@ -1,4 +1,4 @@
-# Production Outputs
+# outputs.tf
 
 output "cluster_endpoint" {
   description = "EKS cluster endpoint"
@@ -49,5 +49,4 @@ output "next_steps" {
     
     For manual deployment steps, see the generated script.
   EOT
-  depends_on = [local_file.deployment_script]
 }

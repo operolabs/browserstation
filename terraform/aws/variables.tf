@@ -1,6 +1,5 @@
 
-# Variables for BrowserStation AWS deployment
-# Default values are optimized for production workloads
+# variables.tf
 
 variable "region" {
     description = "The AWS region to deploy resources in"
@@ -44,4 +43,10 @@ variable "worker_node_config" {
         desired_size = 2
         max_size     = 3
     }
+}
+
+variable "ray_version" {
+  description = "Ray version to deploy – must match the image baked into ECR"
+  type        = string
+  default     = "2.47.1" 
 }

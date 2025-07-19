@@ -9,7 +9,7 @@ from app.models import Health, ActorInfo, BrowserList, BrowserInfo, BrowserStatu
 router = APIRouter()
 service = BrowserService()
 
-# Simple API key from environment variable
+
 API_KEY = os.getenv("BROWSERSTATION_API_KEY")
 
 # API key authentication using FastAPI security

@@ -49,14 +49,39 @@ class BrowserService:
     """Service to manage browser instances"""
     
     def __init__(self):
-        self.browsers = {}
+        pass
     
 
     async def health(self):
         try:
             ray_status = ray.is_initialized()
-            active_browsers = len(self.browsers)
-            return Health(status="healthy", ray_status=ray_status, active_browsers=active_browsers)
+            
+            # Get all browser actors and count by state
+            alive_actors = list_actors(filters=[("class_name", "=", "BrowserActor"), ("state", "=", "ALIVE")])
+            pending_actors = list_actors(filters=[("class_name", "=", "BrowserActor"), ("state", "=", "PENDING_CREATION")])
+            dead_actors = list_actors(filters=[("class_name", "=", "BrowserActor"), ("state", "=", "DEAD")])
+            
+            browser_states = {
+                "alive": len(alive_actors),
+                "pending": len(pending_actors),
+                "dead": len(dead_actors)
+            }
+            
+            # Get resource information as dictionaries
+            try:
+                cluster = ray.cluster_resources()
+                available = ray.available_resources()
+            except Exception:
+                cluster = {}
+                available = {}
+            
+            return Health(
+                status="healthy", 
+                ray_status=ray_status, 
+                browsers=browser_states,
+                cluster=cluster,
+                available=available
+            )
         
         except Exception as e:
             raise HTTPException(status_code=503, detail=f"Unhealthy: {e}")
@@ -65,9 +90,12 @@ class BrowserService:
 
     async def create_browser(self):
         browser_id = str(uuid.uuid4())
-        actor = BrowserActor.remote(browser_id)
         
-        self.browsers[browser_id] = actor
+        # Create the actor with a name
+        actor = BrowserActor.options(name=browser_id, lifetime="detached").remote(browser_id)
+        
+        # Verify it was created by calling a method
+        await actor.get_info.remote()
         
         return ActorInfo(
             browser_id=browser_id,
@@ -77,49 +105,49 @@ class BrowserService:
 
 
     async def list_browsers(self):
-        actors = list_actors(filters=[("class_name", "=", "BrowserActor")])
+        # Get alive and pending actors
+        alive_actors = list_actors(filters=[("class_name", "=", "BrowserActor"), ("state", "=", "ALIVE")])
+        pending_actors = list_actors(filters=[("class_name", "=", "BrowserActor"), ("state", "=", "PENDING_CREATION")])
+        
 
-        browsers = [
-            {"browser_id": actor.name, "state": actor.state}
-            for actor in actors
-        ]
-
-        try:
-            cluster = ray.cluster_resources()
-            available = ray.available_resources()
-            total_cpus = cluster.get("CPU", 0)
-            available_cpus = available.get("CPU", 0)
-        except Exception:
-            total_cpus = available_cpus = None
-
-        return BrowserList(total_cpus=total_cpus, available_cpus=available_cpus, browsers=browsers)
+        async def get_browser_info(actor):
+            actor_handle = ray.get_actor(actor.name)
+            info = await actor_handle.get_info.remote()
+            return {"browser_id": actor.name, "state": "ALIVE", "websocket_url": info.websocket_url}
+          
+        
+        alive_browsers = [await get_browser_info(actor) for actor in alive_actors]
+        pending_browsers = [{"browser_id": actor.name, "state": "PENDING", "websocket_url": None} for actor in pending_actors]
+        
+        return BrowserList(browsers=alive_browsers + pending_browsers)
 
     
     async def get_browser(self, browser_id: str):
-        actor = self.browsers.get(browser_id)
-        if not actor:
+        try:
+            actor = ray.get_actor(browser_id)
+            return await actor.get_info.remote()
+        except ValueError:
             raise HTTPException(status_code=404, detail="Browser not found")
-        return await actor.get_info.remote()
 
 
     async def delete_browser(self, browser_id: str):
-        actor = self.browsers.pop(browser_id, None)
-        if not actor:
-            raise HTTPException(status_code=404, detail="Browser not found")
         try:
+            actor = ray.get_actor(browser_id)
             ray.kill(actor)
+            return BrowserStatus(browser_id=browser_id, status="closed")
+        except ValueError:
+            raise HTTPException(status_code=404, detail="Browser not found")
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Failed to kill actor {e}")
-        
-        return BrowserStatus(browser_id=browser_id, status="closed")
         
 
     
     async def websocket_proxy(self, websocket: WebSocket, browser_id: str, path: str) -> None:
         await websocket.accept()
 
-        actor = self.browsers.get(browser_id)
-        if not actor:
+        try:
+            actor = ray.get_actor(browser_id)
+        except ValueError:
             await websocket.close(code=1008, reason="Browser not found")
             return
 

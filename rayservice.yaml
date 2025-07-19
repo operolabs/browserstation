@@ -9,19 +9,12 @@ spec:
     headGroupSpec:
       rayStartParams:
         dashboard-host: '0.0.0.0'
-        num-cpus: '0'  # Head node has 0 CPUs for browser actors
+        num-cpus: "0"
       template:
         spec:
           containers:
           - name: ray-head
             image: browserstation:v1.0
-            resources:
-              limits:
-                cpu: "2"
-                memory: 4Gi
-              requests:
-                cpu: "1"
-                memory: 2Gi
             env:
             - name: RAY_memory_usage_threshold
               value: "0.95"
@@ -32,7 +25,7 @@ spec:
     
     workerGroupSpecs:
     - groupName: browser-workers
-      replicas: 10
+      replicas: 6
       rayStartParams: {}
       template:
         spec:
@@ -40,12 +33,9 @@ spec:
           - name: ray-worker
             image: browserstation:v1.0
             resources:
-              limits:
-                cpu: "1"
-                memory: 2Gi
               requests:
-                cpu: "500m"
-                memory: 1Gi
+                cpu: "100m"
+                memory: "256Mi"
           - name: chrome
             image: zenika/alpine-chrome:100
             securityContext:
@@ -58,13 +48,11 @@ spec:
             ports:
             - containerPort: 9222
               name: devtools
+              # Absolute cpu/memory limit for the worker
             resources:
-              limits:
-                cpu: "500m"
-                memory: 1Gi
               requests:
-                cpu: "250m"
-                memory: 512Mi
+                cpu: "900m"
+                memory: "768Mi"
 ---
 apiVersion: v1
 kind: Service
