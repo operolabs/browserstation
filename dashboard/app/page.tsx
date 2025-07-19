@@ -39,18 +39,6 @@ const statusChartConfig = {
   agents: {
     label: "Agents",
   },
-  alive: {
-    label: "Active",
-    color: "hsl(152, 60%, 50%)",  // Stronger green
-  },
-  pending: {
-    label: "Pending",
-    color: "hsl(38, 85%, 55%)",   // Stronger orange
-  },
-  dead: {
-    label: "Dead",
-    color: "hsl(0, 65%, 55%)",    // Stronger red
-  },
 } satisfies ChartConfig
 
 export default function AgentMonitor() {
