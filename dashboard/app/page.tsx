@@ -7,38 +7,12 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Label, PolarGrid, PolarRadiusAxis, RadialBar, RadialBarChart, Pie, PieChart } from "recharts"
 import { ChartLegend, ChartLegendContent } from "@/components/ui/chart"
 import { type ChartConfig, ChartContainer } from "@/components/ui/chart"
-import { Copy, Trash2, Clock, AlertCircle } from "lucide-react"
+import { Copy, Trash2, Clock, AlertCircle, Plus, RefreshCw } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { apiClient, type BrowserInfo, type ClusterStatus } from "@/lib/api"
+import { LiveBrowserView } from "@/components/LiveBrowserView"
 
-// Mock data based on the API response structure
-const mockApiData = {
-  status: "healthy",
-  ray_status: true,
-  browsers: {
-    alive: 8,
-    pending: 3,
-    dead: 1,
-  },
-  cluster: {
-    CPU: 48.0,
-    memory: 206158430208.0,
-    object_store_memory: 88353613209.0,
-  },
-  available: {
-    CPU: 30.0,
-    memory: 154618822656.0,
-    object_store_memory: 66265209856.0,
-  },
-}
-
-const agents = Array.from({ length: 12 }, (_, i) => ({
-  id: String(i + 1),
-  name: `Agent ${i + 1}`,
-  uuid: `browser-${Math.random().toString(36).substring(2, 11)}-${Math.random().toString(36).substring(2, 6)}`,
-  state: i < 8 ? "ALIVE" : i < 11 ? "PENDING" : "DEAD",
-  websocket_url: `/ws/browsers/${Math.random().toString(36).substring(2, 10)}/devtools/browser/${Math.random().toString(36).substring(2, 10)}`,
-}))
 
 const chartConfig = {
   available: {
@@ -83,6 +57,9 @@ export default function AgentMonitor() {
   const [columns, setColumns] = useState(3)
   const [filter, setFilter] = useState<"all" | "alive" | "pending">("all")
   const [isLoading, setIsLoading] = useState(true)
+  const [agents, setAgents] = useState<BrowserInfo[]>([])
+  const [clusterStatus, setClusterStatus] = useState<ClusterStatus | null>(null)
+  const [isCreating, setIsCreating] = useState(false)
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -97,27 +74,58 @@ export default function AgentMonitor() {
     }
   }
 
-  useEffect(() => {
-    // Show loading skeleton for 1 second
-    const loadingTimer = setTimeout(() => {
+  // Fetch data from API
+  const fetchData = async () => {
+    try {
+      const [statusData, browsersData] = await Promise.all([
+        apiClient.getStatus(),
+        apiClient.listBrowsers()
+      ])
+      setClusterStatus(statusData)
+      setAgents(browsersData)
       setIsLoading(false)
-    }, 1000)
+    } catch (error) {
+      console.error('Failed to fetch data:', error)
+      setIsLoading(false)
+    }
+  }
 
-    return () => clearTimeout(loadingTimer)
+  useEffect(() => {
+    fetchData()
+    // Refresh data every 5 seconds
+    const interval = setInterval(fetchData, 5000)
+    return () => clearInterval(interval)
   }, [])
 
-  const handleCopy = (uuid: string) => {
-    navigator.clipboard.writeText(uuid)
+  const handleCopy = (id: string) => {
+    navigator.clipboard.writeText(id)
   }
 
-  const handleDelete = (agentId: string) => {
-    console.log(`Delete agent ${agentId}`)
+  const handleDelete = async (agentId: string) => {
+    try {
+      await apiClient.deleteBrowser(agentId)
+      await fetchData()
+    } catch (error) {
+      console.error('Failed to delete browser:', error)
+    }
   }
 
-  const cpuPercentage = (mockApiData.available.CPU / mockApiData.cluster.CPU) * 100
+  const handleCreateBrowser = async () => {
+    setIsCreating(true)
+    try {
+      await apiClient.createBrowser()
+      await fetchData()
+    } catch (error) {
+      console.error('Failed to create browser:', error)
+    } finally {
+      setIsCreating(false)
+    }
+  }
+
+  const cpuPercentage = clusterStatus ? (clusterStatus.available.CPU / clusterStatus.cluster.CPU) * 100 : 0
   const cpuChartData = [{ name: "cpus", available: cpuPercentage, fill: "var(--color-available)" }]
   
-  const memoryPercentage = (mockApiData.available.memory / mockApiData.cluster.memory) * 100
+  const memoryPercentage = clusterStatus ? (clusterStatus.available.memory / clusterStatus.cluster.memory) * 100 : 0
   const memoryChartData = [{ name: "memory", available: memoryPercentage, fill: "var(--color-available)" }]
   
   const filteredAgents = agents.filter(agent => {
@@ -128,9 +136,9 @@ export default function AgentMonitor() {
   })
   
   const statusChartData = [
-    { status: "alive", agents: mockApiData.browsers.alive, fill: "var(--color-alive)" },
-    { status: "pending", agents: mockApiData.browsers.pending, fill: "var(--color-pending)" },
-    { status: "dead", agents: mockApiData.browsers.dead, fill: "var(--color-dead)" },
+    { status: "alive", agents: clusterStatus?.browsers.alive || 0, fill: "var(--color-alive)" },
+    { status: "pending", agents: clusterStatus?.browsers.pending || 0, fill: "var(--color-pending)" },
+    { status: "dead", agents: clusterStatus?.browsers.dead || 0, fill: "var(--color-dead)" },
   ]
 
   return (
@@ -153,7 +161,7 @@ export default function AgentMonitor() {
                 ) : (
                   <>
                     <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                    <span className="text-xs text-gray-600">All Systems Active</span>
+                    <span className="text-xs text-gray-600">{clusterStatus?.status === "healthy" ? "All Systems Active" : "System Issues"}</span>
                   </>
                 )}
               </div>
@@ -186,10 +194,32 @@ export default function AgentMonitor() {
                   <Tabs value={filter} onValueChange={(value) => setFilter(value as "all" | "alive" | "pending")}>
                     <TabsList>
                       <TabsTrigger value="all">All ({agents.length})</TabsTrigger>
-                      <TabsTrigger value="alive">Active ({mockApiData.browsers.alive})</TabsTrigger>
-                      <TabsTrigger value="pending">Pending ({mockApiData.browsers.pending})</TabsTrigger>
+                      <TabsTrigger value="alive">Active ({clusterStatus?.browsers.alive || 0})</TabsTrigger>
+                      <TabsTrigger value="pending">Pending ({clusterStatus?.browsers.pending || 0})</TabsTrigger>
                     </TabsList>
                   </Tabs>
+                  <div className="flex gap-2 ml-4">
+                    <Button
+                      onClick={handleCreateBrowser}
+                      disabled={isCreating}
+                      size="sm"
+                      className="gap-2"
+                    >
+                      {isCreating ? (
+                        <RefreshCw className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Plus className="h-4 w-4" />
+                      )}
+                      Create Browser
+                    </Button>
+                    <Button
+                      onClick={fetchData}
+                      variant="outline"
+                      size="sm"
+                    >
+                      <RefreshCw className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </>
               )}
             </div>
@@ -228,7 +258,7 @@ export default function AgentMonitor() {
                 <ChartContainer 
                   config={cpuChartConfig} 
                   className="aspect-square w-40 h-40"
-                  title={`${mockApiData.available.CPU} out of ${mockApiData.cluster.CPU} CPUs available`}
+                  title={`${clusterStatus?.available.CPU || 0} out of ${clusterStatus?.cluster.CPU || 0} CPUs available`}
                 >
                   <RadialBarChart data={cpuChartData} endAngle={250} innerRadius={55} outerRadius={90}>
                     <PolarGrid
@@ -246,7 +276,7 @@ export default function AgentMonitor() {
                             return (
                               <text x={viewBox.cx} y={viewBox.cy} textAnchor="middle" dominantBaseline="middle">
                                 <tspan x={viewBox.cx} y={viewBox.cy} className="fill-foreground text-2xl">
-                                  {Math.round(mockApiData.available.CPU)}/{Math.round(mockApiData.cluster.CPU)}
+                                  {Math.round(clusterStatus?.available.CPU || 0)}/{Math.round(clusterStatus?.cluster.CPU || 0)}
                                 </tspan>
                                 <tspan
                                   x={viewBox.cx}
@@ -266,7 +296,7 @@ export default function AgentMonitor() {
                 <ChartContainer 
                   config={memoryChartConfig} 
                   className="aspect-square w-40 h-40"
-                  title={`${(mockApiData.available.memory / 1e9).toFixed(1)} out of ${(mockApiData.cluster.memory / 1e9).toFixed(1)} GB memory available`}
+                  title={`${((clusterStatus?.available.memory || 0) / 1e9).toFixed(1)} out of ${((clusterStatus?.cluster.memory || 0) / 1e9).toFixed(1)} GB memory available`}
                 >
                   <RadialBarChart data={memoryChartData} endAngle={250} innerRadius={55} outerRadius={90}>
                     <PolarGrid
@@ -284,7 +314,7 @@ export default function AgentMonitor() {
                             return (
                               <text x={viewBox.cx} y={viewBox.cy} textAnchor="middle" dominantBaseline="middle">
                                 <tspan x={viewBox.cx} y={viewBox.cy} className="fill-foreground text-xl">
-                                  {Math.round(mockApiData.available.memory / 1e9)}/{Math.round(mockApiData.cluster.memory / 1e9)}
+                                  {Math.round((clusterStatus?.available.memory || 0) / 1e9)}/{Math.round((clusterStatus?.cluster.memory || 0) / 1e9)}
                                 </tspan>
                                 <tspan
                                   x={viewBox.cx}
@@ -322,13 +352,13 @@ export default function AgentMonitor() {
                       <Badge variant="outline" className={`text-xs ${getStatusColor(agent.state)}`}>
                         {agent.state}
                       </Badge>
-                      <span className="text-gray-700 text-xs font-mono truncate">{agent.uuid}</span>
+                      <span className="text-gray-700 text-xs font-mono truncate">{agent.id}</span>
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => handleCopy(agent.uuid)}
+                        onClick={() => handleCopy(agent.id)}
                         className="p-1 h-auto hover:bg-gray-200"
                         title="Copy UUID"
                       >
@@ -346,21 +376,23 @@ export default function AgentMonitor() {
                     </div>
                   </div>
                   {/* Browser View */}
-                  <div className="relative">
-                    <img
-                      src={`/placeholder.svg?height=1080&width=1920&text=Agent ${agent.id}`}
-                      alt={`Agent ${agent.id} Browser View`}
-                      className="w-full aspect-video object-cover"
+                  {agent.state === "ALIVE" ? (
+                    <LiveBrowserView 
+                      browserId={agent.id}
+                      websocketUrl={agent.websocket_url}
+                      className="w-full aspect-video"
                     />
-                    {agent.state !== "ALIVE" && (
-                      <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-                        <div className="text-white text-center">
-                          <div className="text-lg font-semibold">{agent.state}</div>
-                          {agent.state === "PENDING" && <div className="text-sm opacity-75">Initializing...</div>}
+                  ) : (
+                    <div className="relative">
+                      <div className="w-full aspect-video bg-gray-200 flex items-center justify-center">
+                        <div className="text-center">
+                          <div className="text-lg font-semibold text-gray-600">{agent.state}</div>
+                          {agent.state === "PENDING" && <div className="text-sm text-gray-500">Initializing browser...</div>}
+                          {agent.state === "DEAD" && <div className="text-sm text-gray-500">Browser terminated</div>}
                         </div>
                       </div>
-                    )}
-                  </div>
+                    </div>
+                  )}
                 </>
               )}
           </div>

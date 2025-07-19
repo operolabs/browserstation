@@ -21,11 +21,15 @@ Review and modify `terraform.tfvars` if needed:
 - `worker_node_config`: Min/max/desired worker nodes
 
 ### 3. Deploy Infrastructure
-```bash
-# Plan the deployment
-terraform plan
+Due to Terraform provider initialization requirements, deployment requires two phases:
 
-# Apply the infrastructure (this will take ~15-20 minutes)
+#### Phase 1: Create EKS Cluster and Infrastructure
+```bash
+terraform apply -target=module.vpc -target=module.eks -target=aws_ecr_repository.browser_api -auto-approve
+```
+
+#### Phase 2: Deploy Kubernetes Resources
+```bash
 terraform apply -auto-approve
 ```
 
@@ -38,30 +42,26 @@ This will:
 6. Deploy BrowserStation RayService
 
 ### 4. Get Load Balancer Endpoint
+After deployment completes, wait a few minutes for the LoadBalancer to provision, then:
+
 ```bash
 # Get the service endpoint
-terraform output -raw browserstation_endpoint
-
-# Or using kubectl
-kubectl get svc -n ray-system browser-cluster-public
+kubectl get svc -n ray-system browser-cluster-public -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'
 ```
 
 ### 5. Test the Deployment
 ```bash
 # Set the endpoint
-ENDPOINT=$(terraform output -raw browserstation_endpoint)
+ENDPOINT=$(kubectl get svc -n ray-system browser-cluster-public -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
 
 # Health check
 curl http://$ENDPOINT:8050/
 
-# Create a browser (requires API key if BROWSERSTATION_API_KEY is set)
-curl -X POST http://$ENDPOINT:8050/browsers \
-  -H "X-API-Key: your-api-key" \
-  -H "Content-Type: application/json"
+# Create a browser
+curl -X POST http://$ENDPOINT:8050/browsers
 
 # List browsers
-curl http://$ENDPOINT:8050/browsers \
-  -H "X-API-Key: your-api-key"
+curl http://$ENDPOINT:8050/browsers
 ```
 
 ### 6. WebSocket Connection Example
@@ -131,11 +131,6 @@ If browsers fail to create with timeout errors:
 1. Check Ray worker resources: Workers need at least 1 CPU per browser actor
 2. Verify node capacity: `kubectl get nodes`
 3. Check Ray cluster status: `kubectl get rayservice -n ray-system`
-
-### Authentication Issues
-If you get 401 errors:
-1. Ensure `BROWSERSTATION_API_KEY` environment variable is set
-2. Include the API key in request headers: `X-API-Key: your-key`
 
 ### Connection Issues
 If unable to connect to the endpoint:

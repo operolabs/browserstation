@@ -29,44 +29,50 @@ provider "helm" {
   }
 }
 
-###############################################################################
-# 3. KubeRay operator via helm_release
-###############################################################################
-resource "kubernetes_namespace" "ray" {
-  metadata { name = "ray-system" }
-  depends_on = [module.eks]
+# Ray namespace
+resource "kubernetes_namespace" "ray_system" {
+  metadata {
+    name = "ray-system"
+  }
 }
 
+# KubeRay operator
 resource "helm_release" "kuberay_operator" {
   name       = "kuberay-operator"
   repository = "https://ray-project.github.io/kuberay-helm/"
   chart      = "kuberay-operator"
-  version    = "1.4.2"
+  version    = "1.3.0"
+  namespace  = kubernetes_namespace.ray_system.metadata[0].name
 
-  namespace        = kubernetes_namespace.ray.metadata[0].name
-  create_namespace = false
-  timeout          = 300
-  depends_on = [module.eks]
+  set {
+    name  = "operator.resources.requests.cpu"
+    value = "100m"
+  }
+  set {
+    name  = "operator.resources.requests.memory"
+    value = "128Mi"
+  }
 }
 
-###############################################################################
-# 4. RayService manifest
-###############################################################################
+# RayService for BrowserStation
 resource "kubernetes_manifest" "browserstation_rayservice" {
   manifest = {
-    apiVersion = "ray.io/v1alpha1"
+    apiVersion = "ray.io/v1"
     kind       = "RayService"
     metadata = {
       name      = "browser-cluster"
-      namespace = "ray-system"
+      namespace = kubernetes_namespace.ray_system.metadata[0].name
     }
     spec = {
+      deploymentUnhealthySecondThreshold = 300
+      serveConfigV2 = jsonencode({
+        applications = []
+      })
       rayClusterConfig = {
-        rayVersion = var.ray_version
         headGroupSpec = {
+          serviceType = "ClusterIP"
           rayStartParams = {
             "dashboard-host" = "0.0.0.0"
-            "num-cpus"       = "0"
           }
           template = {
             spec = {
@@ -75,8 +81,17 @@ resource "kubernetes_manifest" "browserstation_rayservice" {
                 image           = "${aws_ecr_repository.browser_api.repository_url}:latest"
                 imagePullPolicy = "IfNotPresent"
                 ports = [{
+                  containerPort = 6379
+                  name          = "redis"
+                }, {
+                  containerPort = 8265
+                  name          = "dashboard"
+                }, {
+                  containerPort = 10001
+                  name          = "client"
+                }, {
                   containerPort = 8050
-                  name          = "http"
+                  name          = "serve"
                 }]
                 command = ["/bin/bash", "-c", <<-EOT
                   ray start --head --port=6379 \
@@ -132,10 +147,11 @@ resource "kubernetes_manifest" "browserstation_rayservice" {
   ]
 }
 
+# Public LoadBalancer service
 resource "kubernetes_service" "browser_cluster_public" {
   metadata {
     name      = "browser-cluster-public"
-    namespace = "ray-system"
+    namespace = kubernetes_namespace.ray_system.metadata[0].name
   }
   spec {
     type = "LoadBalancer"
