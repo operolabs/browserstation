@@ -37,8 +37,8 @@ docker push ${aws_ecr_repository.browser_api.repository_url}:latest
 
 # Deploy RayService
 echo "Deploying RayService..."
-sed -i.bak 's|image: browserstation:latest|image: ${aws_ecr_repository.browser_api.repository_url}:latest|g' rayservice.yaml
-kubectl apply -f rayservice.yaml
+# Use the AWS-specific rayservice.yaml and substitute placeholders
+sed "s|\${ECR_IMAGE_URL}|${aws_ecr_repository.browser_api.repository_url}:latest|g; s|\${WORKER_REPLICAS}|${var.worker_node_config.desired_size}|g" ${path.module}/rayservice.yaml | kubectl apply -f -
 
 # Wait for deployment
 kubectl wait --for=condition=Ready pods -l ray.io/node-type=head -n ray-system --timeout=300s || true
@@ -126,20 +126,49 @@ for eni in $ENIS; do
     aws ec2 delete-network-interface --network-interface-id $eni --region $REGION 2>/dev/null || true
 done
 
+# Delete ELB Security Groups
+echo "Cleaning up ELB Security Groups..."
+SECURITY_GROUPS=$(aws ec2 describe-security-groups --region $REGION --filters "Name=vpc-id,Values=$VPC_ID" --query "SecurityGroups[?starts_with(GroupName, 'k8s-elb-')].GroupId" --output text 2>/dev/null || true)
+for sg in $SECURITY_GROUPS; do
+    echo "Deleting security group: $sg"
+    aws ec2 delete-security-group --group-id $sg --region $REGION 2>/dev/null || true
+done
+
 # Delete ECR images
 echo "Cleaning up ECR repository..."
 # Note: ECR repository has force_delete = true, so terraform destroy will handle this
 
-# Run terraform destroy
+# Run terraform destroy with retry logic
 echo "Running terraform destroy..."
 cd terraform/aws/
-terraform destroy -auto-approve
+DESTROY_ATTEMPTS=0
+MAX_ATTEMPTS=3
 
-if [ $? -eq 0 ]; then
-    echo "Terraform destroy completed successfully."
-else
-    echo "Terraform destroy failed. Check AWS Console for remaining resources."
-fi
+while [ $DESTROY_ATTEMPTS -lt $MAX_ATTEMPTS ]; do
+    DESTROY_ATTEMPTS=$((DESTROY_ATTEMPTS + 1))
+    echo "Terraform destroy attempt $DESTROY_ATTEMPTS of $MAX_ATTEMPTS..."
+    
+    if terraform destroy -auto-approve; then
+        echo "Terraform destroy completed successfully."
+        break
+    else
+        if [ $DESTROY_ATTEMPTS -lt $MAX_ATTEMPTS ]; then
+            echo "Terraform destroy failed. Retrying in 30 seconds..."
+            sleep 30
+            
+            # Try to clean up any remaining ELB security groups before retry
+            echo "Checking for remaining ELB security groups..."
+            REMAINING_SG=$(aws ec2 describe-security-groups --region $REGION --filters "Name=vpc-id,Values=$VPC_ID" --query "SecurityGroups[?GroupName!='default'].GroupId" --output text 2>/dev/null || true)
+            for sg in $REMAINING_SG; do
+                echo "Force deleting security group: $sg"
+                aws ec2 delete-security-group --group-id $sg --region $REGION 2>/dev/null || true
+            done
+        else
+            echo "Terraform destroy failed after $MAX_ATTEMPTS attempts. Check AWS Console for remaining resources."
+            exit 1
+        fi
+    fi
+done
 EOT
 }
 

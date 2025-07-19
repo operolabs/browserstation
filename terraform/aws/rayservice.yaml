@@ -14,7 +14,8 @@ spec:
         spec:
           containers:
           - name: ray-head
-            image: browserstation:v1.0
+            image: ${ECR_IMAGE_URL}
+            imagePullPolicy: IfNotPresent
             resources:
               limits:
                 cpu: "2"
@@ -32,13 +33,14 @@ spec:
     
     workerGroupSpecs:
     - groupName: browser-workers
-      replicas: 10
+      replicas: ${WORKER_REPLICAS}
       rayStartParams: {}
       template:
         spec:
           containers:
           - name: ray-worker
-            image: browserstation:v1.0
+            image: ${ECR_IMAGE_URL}
+            imagePullPolicy: IfNotPresent
             resources:
               limits:
                 cpu: "1"

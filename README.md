@@ -4,7 +4,6 @@
   src="https://i.ibb.co/SXqtZ8dj/browserstation.png" 
   style="margin: 20px auto;"
 >
-  <h1>Browserstation</h1>
   <p>Open-source, infra-agnostic hosting framework for browser agents. Debug locally. Scale to production.</p>
   <p>
     <a href="https://github.com/operolabs/browserstation/stargazers">

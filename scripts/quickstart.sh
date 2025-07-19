@@ -16,6 +16,7 @@ done
 for c in kind helm kubectl docker; do command -v "$c" >/dev/null || { echo "$c missing"; exit 1; }; done
 
 kind create cluster --name browserstation || true
+kubectl config use-context kind-browserstation
 
 helm repo add kuberay https://ray-project.github.io/kuberay-helm/ 2>/dev/null || true
 helm repo update
@@ -28,8 +29,8 @@ DOCKERFILE=$(
 )
 [[ -f $DOCKERFILE ]] || { echo "Missing $DOCKERFILE"; exit 1; }
 
-docker build -t browserstation:latest -f "$DOCKERFILE" .
-kind load docker-image browserstation:latest --name browserstation
+docker build -t browserstation:v1.0 -f "$DOCKERFILE" .
+kind load docker-image browserstation:v1.0 --name browserstation
 
 kubectl apply -f rayservice.yaml >/dev/null
 
