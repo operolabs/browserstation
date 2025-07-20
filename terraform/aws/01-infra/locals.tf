@@ -1,3 +1,5 @@
+# 01-infra/locals.tf
+
 locals {
   common_tags = {
     Project                                     = var.cluster_name

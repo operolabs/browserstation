@@ -1,3 +1,5 @@
+# 01-infra/image_build.tf
+
 # Docker build and push
 resource "null_resource" "docker_build_push" {
   triggers = {

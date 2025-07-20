@@ -1,3 +1,6 @@
+# 01-infra/variables.tf
+
+
 variable "region" {
   description = "The AWS region to deploy resources in"
   type        = string
@@ -13,7 +16,7 @@ variable "cluster_name" {
 variable "kubernetes_version" {
   description = "EKS control plane version"
   type        = string
-  default     = "1.31"
+  default     = "1.32"
 }
 
 variable "head_node_instance_type" {

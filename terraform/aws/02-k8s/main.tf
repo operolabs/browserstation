@@ -1,3 +1,6 @@
+# 02-k8s/main.tf
+
+
 # Ray namespace
 resource "kubernetes_namespace" "ray_system" {
   metadata {

@@ -1,3 +1,6 @@
+# 01-infra/main.tf
+
+
 # VPC
 module "vpc" {
   source  = "terraform-aws-modules/vpc/aws"
@@ -26,7 +29,7 @@ module "eks" {
   cluster_endpoint_public_access           = true
   cluster_endpoint_private_access          = true
   enable_cluster_creator_admin_permissions = true
-  bootstrap_self_managed_addons            = false
+  bootstrap_self_managed_addons            = true
 
   vpc_id                   = module.vpc.vpc_id
   subnet_ids               = module.vpc.private_subnets
@@ -52,13 +55,16 @@ module "eks" {
 
   cluster_addons = {
     vpc-cni = {
-      most_recent = true
+      addon_version               = "v1.19.2-eksbuild.1"
+      resolve_conflicts_on_update = "OVERWRITE"
     }
     kube-proxy = {
-      most_recent = true
+      addon_version               = "v1.32.0-eksbuild.2"
+      resolve_conflicts_on_update = "OVERWRITE"
     }
     aws-ebs-csi-driver = {
-      most_recent = true
+      addon_version               = "v1.45.0-eksbuild.2"
+      resolve_conflicts_on_update = "OVERWRITE"
     }
   }
 
