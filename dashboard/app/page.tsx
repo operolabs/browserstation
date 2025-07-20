@@ -218,31 +218,9 @@ export default function AgentMonitor() {
               <>
                 <div className="w-40 h-40 bg-gray-200 rounded-full animate-pulse" />
                 <div className="w-40 h-40 bg-gray-200 rounded-full animate-pulse" />
-                <div className="w-40 h-40 bg-gray-200 rounded-full animate-pulse" />
               </>
             ) : (
               <>
-                <div className="flex flex-col items-center">
-                  <ChartContainer
-                    config={statusChartConfig}
-                    className="aspect-square w-48 h-48"
-                    title="Agent status distribution"
-                  >
-                    <PieChart>
-                      <Pie 
-                        data={statusChartData} 
-                        dataKey="agents"
-                        nameKey="status"
-                        strokeWidth={2}
-                        stroke="white"
-                      />
-                      <ChartLegend 
-                        content={<ChartLegendContent nameKey="status" />}
-                        className="mt-2"
-                      />
-                    </PieChart>
-                  </ChartContainer>
-                </div>
                 <ChartContainer 
                   config={cpuChartConfig} 
                   className="aspect-square w-40 h-40"

@@ -184,9 +184,10 @@ test-results.xml
 # ========================================
 .env
 .env.*
-.env.local
+# .env.local  # Commented out to allow pushing to repository
 .env.*.local
 !.env.example
+!.env.local  # Explicitly allow .env.local
 
 # ========================================
 # Security

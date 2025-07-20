@@ -38,9 +38,10 @@ spec:
                 memory: "4Gi"
     workerGroupSpecs:
     - groupName: browser-workers
-      minReplicas: 0
-      maxReplicas: ${max_workers}
-      rayStartParams: {}
+      minReplicas: 20
+      maxReplicas: 30
+      rayStartParams:
+        num-cpus: "4"
       template:
         spec:
           containers:
@@ -49,11 +50,11 @@ spec:
             imagePullPolicy: IfNotPresent
             resources:
               requests:
-                cpu: "1"
-                memory: "512Mi"
+                cpu: "500m"
+                memory: "500Mi"
               limits:
-                cpu: "2"
-                memory: "1Gi"
+                cpu: "500m"
+                memory: "500Mi"
           - name: chrome
             image: zenika/alpine-chrome:100
             args:
@@ -65,8 +66,8 @@ spec:
               name: devtools
             resources:
               requests:
-                cpu: "900m"
-                memory: "768Mi"
+                cpu: "500m"
+                memory: "500Mi"
               limits:
-                cpu: "900m"
-                memory: "1Gi"
+                cpu: "500m"
+                memory: "500Mi"

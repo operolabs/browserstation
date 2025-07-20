@@ -12,15 +12,14 @@
 - **NEW:** Install [AWS CLI v2](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) (configure it with your IAM credentials) and [Terraform (>= 1.2)](https://developer.hashicorp.com/terraform/install).
 - Make sure your AWS credentials are configured correctly with `AdministratorAccess` for simplicity. [Review IAM permissions here](#iam-permissions).
 
-### Step 2: Create AWS Infrastructure (15–20 minutes)
+### Step 2: Deploy Browserstation in production (15–20 minutes)
 
 Provision the EKS cluster and networking with Terraform.  
 NAT gateway creation and EKS provisioning may take some time.
 
 ```bash
 cd terraform/aws
-terraform init
-terraform apply -var="browserstation_api_key=your-secret-key" -auto-approve
+./deploy.sh
 ````
 
 ### Step 3: Test Browserstation
@@ -37,7 +36,7 @@ Access your service with the API key at:
 ## Clean Up (\~10 minutes)
 
 ```bash
-terraform destroy -auto-approve
+./teardown.sh
 ```
 
 ## Security
@@ -53,8 +52,8 @@ By default, `cluster_endpoint_public_access = true` is set in `main.tf`, exposin
 
 ## Configure
 
-The default configuration is optimized for default service quotas.
-To customize your setup, edit `variables.tf` to define the size of your backend based on your workload.
+To customize your setup, edit `aws/01-infra/variables.tf` and `aws/02-k8s/templates/rayservice.yaml.tpl` to define the size of your backend based on your workload. Run then `./deploy.sh` again
+
 
 ## IAM Permissions
 
