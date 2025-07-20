@@ -25,6 +25,10 @@
 
 ## Quick Start
 
+
+https://github.com/user-attachments/assets/39753053-538b-4ada-b561-eec50a4f4769
+
+
 <video src="./assets/browserstation.mp4" autoplay loop muted controls width="100%"></video>
 
 ### 1. Prerequisites
