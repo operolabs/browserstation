@@ -25,6 +25,8 @@
 
 ## Quick Start
 
+<video src="./assets/browserstation.mp4" autoplay loop muted controls width="100%"></video>
+
 ### 1. Prerequisites
 
 - [kubectl](https://kubernetes.io/docs/tasks/tools/) >= 1.23
