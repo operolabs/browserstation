@@ -1,31 +1,41 @@
-###############################################################################
-# kubernetes.tf – makes Kubernetes & Helm providers wait for the EKS cluster
-###############################################################################
+# kuberenetes.tf
 
-# Wait until the EKS control‑plane exists, **then** read its endpoint & cert
-data "aws_eks_cluster" "this" {
-  name       = module.eks.cluster_name
-  depends_on = [module.eks]            # <- critical!
-}
-
-data "aws_eks_cluster_auth" "this" {
-  name       = module.eks.cluster_name
-  depends_on = [module.eks]
-}
-
-# Default Kubernetes provider – will use the values above
+# Configure Kubernetes provider using exec authentication
 provider "kubernetes" {
-  host                   = data.aws_eks_cluster.this.endpoint
-  cluster_ca_certificate = base64decode(data.aws_eks_cluster.this.certificate_authority[0].data)
-  token                  = data.aws_eks_cluster_auth.this.token
+  host                   = module.eks.cluster_endpoint
+  cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data)
+
+  exec {
+    api_version = "client.authentication.k8s.io/v1beta1"
+    command     = "aws"
+    args        = ["eks", "get-token", "--cluster-name", module.eks.cluster_name]
+  }
 }
 
-# Default Helm provider, driven by the same connection
+# Configure Helm provider using exec authentication
 provider "helm" {
   kubernetes {
-    host                   = data.aws_eks_cluster.this.endpoint
-    cluster_ca_certificate = base64decode(data.aws_eks_cluster.this.certificate_authority[0].data)
-    token                  = data.aws_eks_cluster_auth.this.token
+    host                   = module.eks.cluster_endpoint
+    cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data)
+    
+    exec {
+      api_version = "client.authentication.k8s.io/v1beta1"
+      command     = "aws"
+      args        = ["eks", "get-token", "--cluster-name", module.eks.cluster_name]
+    }
+  }
+}
+
+# Configure kubectl provider using exec authentication
+provider "kubectl" {
+  host                   = module.eks.cluster_endpoint
+  cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data)
+  load_config_file       = false
+  
+  exec {
+    api_version = "client.authentication.k8s.io/v1beta1"
+    command     = "aws"
+    args        = ["eks", "get-token", "--cluster-name", module.eks.cluster_name]
   }
 }
 
@@ -34,6 +44,26 @@ resource "kubernetes_namespace" "ray_system" {
   metadata {
     name = "ray-system"
   }
+  
+  depends_on = [module.eks]
+}
+
+# API key secret (only created if API key is provided)
+resource "kubernetes_secret" "browserstation_api_key" {
+  count = var.browserstation_api_key == "" ? 0 : 1
+
+  metadata {
+    name      = "browserstation-api-key"
+    namespace = kubernetes_namespace.ray_system.metadata[0].name
+  }
+
+  data = {
+    BROWSERSTATION_API_KEY = var.browserstation_api_key
+  }
+  
+  type = "Opaque"
+  
+  depends_on = [module.eks]
 }
 
 # KubeRay operator
@@ -52,98 +82,23 @@ resource "helm_release" "kuberay_operator" {
     name  = "operator.resources.requests.memory"
     value = "128Mi"
   }
+  
+  depends_on = [module.eks]
 }
 
-# RayService for BrowserStation
-resource "kubernetes_manifest" "browserstation_rayservice" {
-  manifest = {
-    apiVersion = "ray.io/v1"
-    kind       = "RayService"
-    metadata = {
-      name      = "browser-cluster"
-      namespace = kubernetes_namespace.ray_system.metadata[0].name
-    }
-    spec = {
-      deploymentUnhealthySecondThreshold = 300
-      serveConfigV2 = jsonencode({
-        applications = []
-      })
-      rayClusterConfig = {
-        headGroupSpec = {
-          serviceType = "ClusterIP"
-          rayStartParams = {
-            "dashboard-host" = "0.0.0.0"
-          }
-          template = {
-            spec = {
-              containers = [{
-                name            = "ray-head"
-                image           = "${aws_ecr_repository.browser_api.repository_url}:latest"
-                imagePullPolicy = "IfNotPresent"
-                ports = [{
-                  containerPort = 6379
-                  name          = "redis"
-                }, {
-                  containerPort = 8265
-                  name          = "dashboard"
-                }, {
-                  containerPort = 10001
-                  name          = "client"
-                }, {
-                  containerPort = 8050
-                  name          = "serve"
-                }]
-                command = ["/bin/bash", "-c", <<-EOT
-                  ray start --head --port=6379 \
-                  --dashboard-host=0.0.0.0 --metrics-export-port=8080 \
-                  --num-cpus=0 --block & \
-                  sleep 5 && uvicorn app.main:app --host 0.0.0.0 --port 8050
-                EOT
-                ]
-              }]
-            }
-          }
-        }
-        workerGroupSpecs = [{
-          groupName    = "browser-workers"
-          minReplicas  = 0
-          maxReplicas  = var.worker_node_config.max_size
-          rayStartParams = {}
-          template = {
-            spec = {
-              containers = [
-                {
-                  name            = "ray-worker"
-                  image           = "${aws_ecr_repository.browser_api.repository_url}:latest"
-                  imagePullPolicy = "IfNotPresent"
-                  resources = {
-                    requests = { cpu = "1", memory = "512Mi" }
-                    limits   = { cpu = "2", memory = "1Gi" }
-                  }
-                },
-                {
-                  name  = "chrome"
-                  image = "zenika/alpine-chrome:100"
-                  args  = ["--no-sandbox", "--remote-debugging-address=0.0.0.0", "--remote-debugging-port=9222"]
-                  ports = [{
-                    containerPort = 9222
-                    name          = "devtools"
-                  }]
-                  resources = {
-                    requests = { cpu = "900m", memory = "768Mi" }
-                    limits   = { cpu = "900m", memory = "1Gi" }
-                  }
-                }
-              ]
-            }
-          }
-        }]
-      }
-    }
-  }
+# RayService for BrowserStation using kubectl provider
+resource "kubectl_manifest" "browserstation_rayservice" {
+  yaml_body = templatefile("${path.module}/templates/rayservice.yaml.tpl", {
+    namespace        = kubernetes_namespace.ray_system.metadata[0].name
+    image           = "${aws_ecr_repository.browser_api.repository_url}:latest"
+    max_workers     = var.worker_node_config.max_size
+    api_key_secret  = var.browserstation_api_key != "" ? kubernetes_secret.browserstation_api_key[0].metadata[0].name : ""
+  })
+  
   depends_on = [
     helm_release.kuberay_operator,
-    null_resource.docker_build_push
+    null_resource.docker_build_push,
+    kubernetes_secret.browserstation_api_key
   ]
 }
 
@@ -165,5 +120,6 @@ resource "kubernetes_service" "browser_cluster_public" {
       target_port = 8050
     }
   }
-  depends_on = [kubernetes_manifest.browserstation_rayservice]
+  
+  depends_on = [kubectl_manifest.browserstation_rayservice]
 }

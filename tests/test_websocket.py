@@ -61,7 +61,6 @@ def main():
         print(f"Connecting to: {ws_url}")
         
         browser = p.chromium.connect_over_cdp(ws_url)
-        
         page = browser.new_page()
         
         # Navigate to a site

@@ -6,134 +6,95 @@
 - Terraform >= 1.6
 - kubectl installed
 
+## Two-Stage Architecture
+
+The deployment is split into two stages to avoid circular dependencies:
+- **01-infra**: VPC, EKS cluster, node groups, ECR repository
+- **02-k8s**: Kubernetes resources (Helm charts, services, etc.)
+
 ## Deployment Steps
 
-### 1. Initialize Terraform
+### 1. Deploy Infrastructure (Stage 1)
 ```bash
-cd terraform/aws
+cd terraform/aws/01-infra
 terraform init
-```
-
-### 2. Configure Variables (Optional)
-Review and modify `terraform.tfvars` if needed:
-- `cluster_name`: EKS cluster name (default: browserstation)
-- `region`: AWS region (default: us-east-1)
-- `worker_node_config`: Min/max/desired worker nodes
-
-### 3. Deploy Infrastructure
-Due to Terraform provider initialization requirements, deployment requires two phases:
-
-#### Phase 1: Create EKS Cluster and Infrastructure
-```bash
-terraform apply -target=module.vpc -target=module.eks -target=aws_ecr_repository.browser_api -auto-approve
-```
-
-#### Phase 2: Deploy Kubernetes Resources
-```bash
 terraform apply -auto-approve
 ```
 
-This will:
-1. Create VPC and networking components
-2. Deploy EKS cluster with node groups
-3. Create ECR repository
-4. Build and push Docker image
-5. Install KubeRay operator
-6. Deploy BrowserStation RayService
-
-### 4. Get Load Balancer Endpoint
-After deployment completes, wait a few minutes for the LoadBalancer to provision, then:
-
+### 2. Deploy Kubernetes Resources (Stage 2)
 ```bash
-# Get the service endpoint
-kubectl get svc -n ray-system browser-cluster-public -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'
+cd ../02-k8s
+terraform init
+
+# Without API key
+terraform apply -auto-approve
+
+# With API key
+terraform apply -var="browserstation_api_key=your-secret-key" -auto-approve
 ```
 
-### 5. Test the Deployment
+### 3. Get Load Balancer Endpoint
+```bash
+terraform output -raw browserstation_endpoint
+```
+
+## Testing
+
 ```bash
 # Set the endpoint
-ENDPOINT=$(kubectl get svc -n ray-system browser-cluster-public -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+ENDPOINT=$(terraform output -raw browserstation_endpoint)
 
 # Health check
 curl http://$ENDPOINT:8050/
 
-# Create a browser
+# If deployed with API key
+curl -X POST http://$ENDPOINT:8050/browsers \
+  -H "X-API-Key: your-secret-key" \
+  -H "Content-Type: application/json"
+
+# If deployed without API key
 curl -X POST http://$ENDPOINT:8050/browsers
-
-# List browsers
-curl http://$ENDPOINT:8050/browsers
 ```
 
-### 6. WebSocket Connection Example
-```python
-import asyncio
-import websockets
-import json
+## Cleanup (IMPORTANT: Reverse Order)
 
-async def test_websocket():
-    endpoint = "YOUR_ENDPOINT_HERE"
-    browser_id = "YOUR_BROWSER_ID"
-    
-    # Connect to Chrome DevTools Protocol
-    uri = f"ws://{endpoint}:8050/ws/browsers/{browser_id}/devtools/browser/page"
-    
-    async with websockets.connect(uri) as websocket:
-        # Send a CDP command
-        await websocket.send(json.dumps({
-            "id": 1,
-            "method": "Target.getTargets",
-            "params": {}
-        }))
-        
-        # Receive response
-        response = await websocket.recv()
-        print(json.loads(response))
+**Must destroy in reverse order to avoid errors:**
 
-asyncio.run(test_websocket())
-```
-
-## Monitoring
-
-### View Ray Dashboard
 ```bash
-# Port-forward Ray dashboard
-kubectl port-forward -n ray-system svc/browser-cluster-head-svc 8265:8265
+# First destroy Kubernetes resources
+cd terraform/aws/02-k8s
+terraform destroy -auto-approve
 
-# Access at http://localhost:8265
-```
-
-### View Logs
-```bash
-# Ray head logs
-kubectl logs -n ray-system -l ray.io/node-type=head -c ray-head
-
-# Worker logs
-kubectl logs -n ray-system -l ray.io/node-type=worker -c ray-worker
-```
-
-## Cleanup
-
-### Complete Teardown
-```bash
+# Then destroy infrastructure
+cd ../01-infra
 terraform destroy -auto-approve
 ```
 
-This will remove:
-- EKS cluster and all Kubernetes resources
-- VPC and networking components
-- ECR repository and images
-- All associated AWS resources
+## Quick Commands
+
+### Full Deployment with API Key
+```bash
+cd terraform/aws/01-infra && terraform init && terraform apply -auto-approve
+cd ../02-k8s && terraform init && terraform apply -var="browserstation_api_key=my-key" -auto-approve
+```
+
+### Full Cleanup
+```bash
+cd terraform/aws/02-k8s && terraform destroy -auto-approve
+cd ../01-infra && terraform destroy -auto-approve
+```
+
+## Benefits of Two-Stage Pattern
+
+1. **No circular dependencies**: Kubernetes providers in 02-k8s read cluster info from 01-infra outputs
+2. **Clean destruction**: Kubernetes resources are destroyed before the cluster
+3. **No more "Cluster has nodegroups attached" errors**
+4. **Modular**: Can update Kubernetes resources without touching infrastructure
 
 ## Troubleshooting
 
-### Browser Creation Timeout
-If browsers fail to create with timeout errors:
-1. Check Ray worker resources: Workers need at least 1 CPU per browser actor
-2. Verify node capacity: `kubectl get nodes`
-3. Check Ray cluster status: `kubectl get rayservice -n ray-system`
-
-### Connection Issues
-If unable to connect to the endpoint:
-1. Verify security groups allow inbound traffic on port 8050
-2. Check Load Balancer status: `kubectl describe svc -n ray-system browser-cluster-public`
-3. Ensure EKS cluster has internet access through NAT gateway
+### If destroy fails
+The two-stage pattern should prevent destroy failures. If issues occur:
+1. Always destroy 02-k8s before 01-infra
+2. Check for lingering LoadBalancers: `kubectl get svc -A`
+3. Manually delete stuck resources if needed

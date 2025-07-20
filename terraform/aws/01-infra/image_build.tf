@@ -1,15 +1,13 @@
-# image_build.tf
-
+# Docker build and push
 resource "null_resource" "docker_build_push" {
-  # Re-run when the Dockerfile or app source changes
   triggers = {
-    dockerfile_sha = filesha256("${path.module}/../../Dockerfile.x86_64")
-    app_sha        = filesha256("${path.module}/../../app/main.py")
+    dockerfile_sha = filesha256("${path.module}/../../../Dockerfile.x86_64")
+    app_sha        = filesha256("${path.module}/../../../app/main.py")
   }
 
   provisioner "local-exec" {
     interpreter = ["bash", "-c"]
-    command = <<EOC
+    command     = <<EOC
 set -euo pipefail
 
 echo "🔐  Logging in to ECR..."
@@ -19,10 +17,12 @@ aws ecr get-login-password --region ${var.region} \
 echo "🏗   Building image..."
 docker buildx build --platform linux/amd64 \
   -t ${aws_ecr_repository.browser_api.repository_url}:latest \
-  -f ../../Dockerfile.x86_64 ../../
+  -f ../../../Dockerfile.x86_64 ../../../
 
 echo "📤  Pushing image..."
 docker push ${aws_ecr_repository.browser_api.repository_url}:latest
 EOC
   }
+  
+  depends_on = [aws_ecr_repository.browser_api]
 }

@@ -30,24 +30,20 @@ output "ecr_repository_url" {
   value       = aws_ecr_repository.browser_api.repository_url
 }
 
+output "browserstation_endpoint" {
+  description = "BrowserStation service endpoint"
+  value       = try(kubernetes_service.browser_cluster_public.status[0].load_balancer[0].ingress[0].hostname, "pending...")
+}
+
 output "next_steps" {
-  description = "Next steps to deploy BrowserStation"
+  description = "Next steps to use BrowserStation"
   value = <<-EOT
-    ✅ Infrastructure created successfully!
+    ✅ Deployment complete!
     
-    📄 A deployment script has been generated: ./deploy_to_eks.sh
+    🌐 BrowserStation endpoint: ${try(kubernetes_service.browser_cluster_public.status[0].load_balancer[0].ingress[0].hostname, "pending...")}
     
-    To deploy BrowserStation, simply run:
-       ./deploy_to_eks.sh
-    
-    This script will:
-    - Configure kubectl
-    - Install KubeRay operator
-    - Build and push Docker image
-    - Deploy the Ray cluster
-    - Show you the service endpoint
-    
-    For manual deployment steps, see the generated script.
+    Test with:
+    curl http://${try(kubernetes_service.browser_cluster_public.status[0].load_balancer[0].ingress[0].hostname, "ENDPOINT")}:8050/
   EOT
 }
 

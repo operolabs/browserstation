@@ -20,51 +20,25 @@ NAT gateway creation and EKS provisioning may take some time.
 ```bash
 cd terraform/aws
 terraform init
-terraform apply -auto-approve
+terraform apply -var="browserstation_api_key=your-secret-key" -auto-approve
 ````
 
-### Step 3: Deploy Browserstation
+### Step 3: Test Browserstation
 
-After `terraform apply`, a script named `./deploy_to_eks.sh` will be generated in the root directory.
-Run it to deploy Browserstation:
-
-```bash
-export BROWSERSTATION_API_KEY="your-secret-key"
-cd ../../
-./deploy_to_eks.sh
+After deployment completes (typically 10-15 minutes), Terraform will output:
+```
+browserstation_endpoint = "your-load-balancer-dns.elb.amazonaws.com"
 ```
 
-### Step 4: Access Browserstation
+Access your service with the API key at:
+  `your-load-balancer-dns.elb.amazonaws.com:8050`
 
-Run the following to get the external IP of your cluster:
-
-```bash
-kubectl get svc browser-cluster-public -n ray-system
-```
-
-* If `EXTERNAL-IP` is `<pending>`, wait for the LoadBalancer to finish provisioning.
-* Once ready, you'll see an address like `a7a7597-123.elb.amazonaws.com`.
-* Access your service with the API key at:
-  `http://a7a7597-123.elb.amazonaws.com:8050`
 
 ## Clean Up (\~10 minutes)
 
-**1) Delete the kind cluster:**
-
 ```bash
-./scripts/teardown.sh
-```
-
-**2) Delete AWS infrastructure:**
-
-```bash
-cd terraform/aws
 terraform destroy -auto-approve
 ```
-
-> ⚠️ `terraform destroy` may fail to clean up all resources due to orphaned VPCs or dependencies.
->
-> If this happens, use the generated `./teardown_eks.sh` script in your root directory. This script will aggressively remove Browserstation and all AWS resources, even if Terraform cannot.
 
 ## Security
 
@@ -81,11 +55,6 @@ By default, `cluster_endpoint_public_access = true` is set in `main.tf`, exposin
 
 The default configuration is optimized for default service quotas.
 To customize your setup, edit `variables.tf` to define the size of your backend based on your workload.
-
-* If you change the number of worker nodes in Terraform, also update `workerGroupSpecs.replicas` in `rayservice.yaml` in your root directory.
-
-**Example:**
-If `max_size = 10` in Terraform but `replicas: 2` in `rayservice.yaml`, you will only use 2 workers even though AWS allows up to 10.
 
 ## IAM Permissions
 
