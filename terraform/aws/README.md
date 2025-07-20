@@ -19,8 +19,8 @@ NAT gateway creation and EKS provisioning may take some time.
 
 ```bash
 cd terraform/aws
-./deploy.sh
-````
+./deploy.sh --api-key your-secret-key
+```
 
 ### Step 3: Test Browserstation
 
@@ -29,8 +29,10 @@ After deployment completes (typically 10-15 minutes), Terraform will output:
 browserstation_endpoint = "your-load-balancer-dns.elb.amazonaws.com"
 ```
 
-Access your service with the API key at:
+Access your service at:
   `your-load-balancer-dns.elb.amazonaws.com:8050`
+
+Note: If you didn't specify an API key during deployment, authentication is disabled.
 
 
 ## Clean Up (\~10 minutes)
@@ -52,7 +54,7 @@ By default, `cluster_endpoint_public_access = true` is set in `main.tf`, exposin
 
 ## Configure
 
-To customize your setup, edit `aws/01-infra/variables.tf` and `aws/02-k8s/templates/rayservice.yaml.tpl` to define the size of your backend based on your workload. Run then `./deploy.sh` again
+To customize your setup, edit `aws/01-infra/variables.tf` and `aws/02-k8s/templates/rayservice.yaml.tpl` to define the size of your backend based on your workload. Then run `./deploy.sh --api-key your-secret-key` again
 
 
 ## IAM Permissions

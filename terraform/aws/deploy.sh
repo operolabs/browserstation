@@ -5,7 +5,38 @@
 
 set -e  # Exit on error
 
+# Default values
+API_KEY=""
+
+# Parse command line arguments
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --api-key)
+            API_KEY="$2"
+            shift 2
+            ;;
+        -h|--help)
+            echo "Usage: $0 [--api-key YOUR_API_KEY]"
+            echo ""
+            echo "Options:"
+            echo "  --api-key    Set the BrowserStation API key (default: empty - no auth)"
+            echo "  -h, --help   Show this help message"
+            exit 0
+            ;;
+        *)
+            echo "Unknown option: $1"
+            echo "Use -h or --help for usage information"
+            exit 1
+            ;;
+    esac
+done
+
 echo "🚀 Starting BrowserStation deployment..."
+if [ -n "$API_KEY" ]; then
+    echo "   Using API key: ${API_KEY:0:8}..."
+else
+    echo "   No API key provided - authentication disabled"
+fi
 echo ""
 
 # Colors for output
@@ -60,7 +91,13 @@ print_status "Running terraform init..."
 terraform init
 
 print_status "Running terraform apply..."
-if terraform apply -auto-approve; then
+if [ -n "$API_KEY" ]; then
+    terraform apply -var="browserstation_api_key=$API_KEY" -auto-approve
+else
+    terraform apply -auto-approve
+fi
+
+if [ $? -eq 0 ]; then
     print_status "Kubernetes resources deployment completed successfully!"
 else
     print_error "Kubernetes resources deployment failed!"
@@ -83,6 +120,13 @@ echo "To test the deployment:"
 echo "  curl -X GET http://${ENDPOINT}:8050/"
 echo ""
 echo "To create a browser:"
-echo "  curl -X POST http://${ENDPOINT}:8050/browsers \\"
-echo "    -H 'X-API-Key: your-secret-key' \\"
-echo "    -H 'Content-Type: application/json'"
+if [ -n "$API_KEY" ]; then
+    echo "  curl -X POST http://${ENDPOINT}:8050/browsers \\"
+    echo "    -H 'X-API-Key: $API_KEY' \\"
+    echo "    -H 'Content-Type: application/json'"
+else
+    echo "  curl -X POST http://${ENDPOINT}:8050/browsers \\"
+    echo "    -H 'Content-Type: application/json'"
+    echo ""
+    echo "  Note: No API key set - authentication is disabled"
+fi
