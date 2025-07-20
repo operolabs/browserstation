@@ -31,15 +31,9 @@ export interface ClusterStatus {
     dead: number
   }
   cluster: {
-    CPU: number
-    memory: number
-    object_store_memory: number
     [key: string]: number
   }
   available: {
-    CPU: number
-    memory: number
-    object_store_memory: number
     [key: string]: number
   }
 }
@@ -71,7 +65,12 @@ class APIClient {
     if (!response.ok) throw new Error('Failed to list browsers')
     const data = await response.json()
     // Map browser_id to id for consistency
-    return data.browsers.map((browser: any) => ({
+    interface ApiBrowserInfo {
+      browser_id: string
+      state: 'ALIVE' | 'PENDING' | 'DEAD'
+      websocket_url: string
+    }
+    return data.browsers.map((browser: ApiBrowserInfo) => ({
       id: browser.browser_id,
       browser_id: browser.browser_id,
       state: browser.state,

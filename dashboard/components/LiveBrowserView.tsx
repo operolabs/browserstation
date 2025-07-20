@@ -12,6 +12,7 @@ interface LiveBrowserViewProps {
 
 export function LiveBrowserView({ browserId, className = "" }: LiveBrowserViewProps) {
   const [wsUrl, setWsUrl] = useState<string | null>(null)
+  const [noPages, setNoPages] = useState(false)
   const { sendJsonMessage, lastJsonMessage, readyState } = useWebSocket(wsUrl, {
     shouldReconnect: () => true,
     reconnectAttempts: 5,
@@ -25,28 +26,32 @@ export function LiveBrowserView({ browserId, className = "" }: LiveBrowserViewPr
 
   // Poll until Chrome is ready
   useEffect(() => {
-    let interval: NodeJS.Timeout
-    
     const checkBrowser = async () => {
       try {
         const info = await apiClient.getBrowser(browserId)
         if (info.chrome_ready && info.websocket_url) {
           const fullUrl = apiClient.getWebSocketUrl(browserId, info.websocket_url)
           setWsUrl(fullUrl)
-          clearInterval(interval)
+          return true
         }
-      } catch (error) {
+      } catch {
         // Silently retry
       }
+      return false
     }
     
-    interval = setInterval(checkBrowser, 1000)
+    const interval = setInterval(async () => {
+      const ready = await checkBrowser()
+      if (ready) {
+        clearInterval(interval)
+      }
+    }, 1000)
     checkBrowser()
     
     return () => clearInterval(interval)
   }, [browserId])
 
-  // Initialize when WebSocket connects
+  // Initialize when WebSocket connects and poll for pages
   useEffect(() => {
     if (readyState === ReadyState.OPEN && !isInitialized.current) {
       isInitialized.current = true
@@ -54,22 +59,62 @@ export function LiveBrowserView({ browserId, className = "" }: LiveBrowserViewPr
         id: msgId.current++,
         method: "Target.getTargets"
       })
+      
+      // Poll for pages every 2 seconds if no pages
+      const interval = setInterval(() => {
+        if (noPages && readyState === ReadyState.OPEN) {
+          sendJsonMessage({
+            id: msgId.current++,
+            method: "Target.getTargets"
+          })
+        }
+      }, 2000)
+      
+      return () => clearInterval(interval)
     }
-  }, [readyState, sendJsonMessage])
+  }, [readyState, sendJsonMessage, noPages])
 
   // Handle messages
   useEffect(() => {
     if (!lastJsonMessage) return
     
-    const msg = lastJsonMessage as any
+    interface TargetInfo {
+      targetId: string
+      type: string
+      title: string
+      url: string
+      attached: boolean
+      browserContextId?: string
+    }
+    
+    interface Message {
+      id?: number
+      method?: string
+      result?: {
+        targetInfos?: TargetInfo[]
+        targetId?: string
+        sessionId?: string
+      }
+      params?: {
+        data?: string
+        metadata?: {
+          deviceWidth: number
+          deviceHeight: number
+        }
+        sessionId?: string
+      }
+    }
+    
+    const msg = lastJsonMessage as Message
     
     // Handle getTargets response
     if (msg.id && msg.result?.targetInfos) {
-      const pages = msg.result.targetInfos.filter((t: any) => t.type === "page")
+      const pages = msg.result.targetInfos.filter((t) => t.type === "page")
       
       if (pages.length > 0) {
         // Attach to first page
         const page = pages[0]
+        setNoPages(false)
         sendJsonMessage({
           id: msgId.current++,
           method: "Target.attachToTarget",
@@ -79,28 +124,13 @@ export function LiveBrowserView({ browserId, className = "" }: LiveBrowserViewPr
           }
         })
       } else {
-        // Create new page
-        sendJsonMessage({
-          id: msgId.current++,
-          method: "Target.createTarget",
-          params: { url: "https://example.com" }
-        })
+        // No pages available
+        setNoPages(true)
       }
       return
     }
     
-    // Handle createTarget response
-    if (msg.id && msg.result?.targetId) {
-      sendJsonMessage({
-        id: msgId.current++,
-        method: "Target.attachToTarget",
-        params: {
-          targetId: msg.result.targetId,
-          flatten: true
-        }
-      })
-      return
-    }
+    // Remove createTarget response handler since we don't create pages
     
     // Handle attachToTarget response
     if (msg.id && msg.result?.sessionId) {
@@ -121,27 +151,21 @@ export function LiveBrowserView({ browserId, className = "" }: LiveBrowserViewPr
           format: "jpeg",
           quality: 80,
           everyNthFrame: 1,
-          maxWidth: 800,
-          maxHeight: 600
+          maxWidth: 1600,
+          maxHeight: 800
         },
         sessionId: sessionId.current
       })
       
-      // Navigate to ensure content
-      sendJsonMessage({
-        id: msgId.current++,
-        method: "Page.navigate",
-        params: { url: "https://example.com" },
-        sessionId: sessionId.current
-      })
+      // Don't navigate - let the user control navigation
       return
     }
     
     // Handle screencast frames
-    if (msg.method === "Page.screencastFrame") {
+    if (msg.method === "Page.screencastFrame" && msg.params) {
       const { data, metadata, sessionId: frameSessionId } = msg.params
       
-      if (!canvasRef.current) return
+      if (!canvasRef.current || !data || !metadata) return
       
       const ctx = canvasRef.current.getContext("2d")
       if (!ctx) return
@@ -175,6 +199,18 @@ export function LiveBrowserView({ browserId, className = "" }: LiveBrowserViewPr
     return (
       <div className={`relative ${className} bg-gray-100 flex items-center justify-center`}>
         <div className="animate-pulse text-gray-600">Connecting...</div>
+      </div>
+    )
+  }
+
+  // Show no pages message
+  if (noPages) {
+    return (
+      <div className={`relative ${className} bg-gray-100 flex items-center justify-center`}>
+        <div className="text-center">
+          <div className="text-gray-600 font-medium">No pages available</div>
+          <div className="text-gray-500 text-sm mt-1">Create a page using Playwright or Puppeteer</div>
+        </div>
       </div>
     )
   }

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Card, CardContent } from "@/components/ui/card"
+// import { Card, CardContent } from "@/components/ui/card"
 import { Slider } from "@/components/ui/slider"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Label, PolarGrid, PolarRadiusAxis, RadialBar, RadialBarChart, Pie, PieChart } from "recharts"
@@ -14,12 +14,12 @@ import { apiClient, type BrowserInfo, type ClusterStatus } from "@/lib/api"
 import { LiveBrowserView } from "@/components/LiveBrowserView"
 
 
-const chartConfig = {
-  available: {
-    label: "Available",
-    color: "hsl(var(--chart-2))",
-  },
-} satisfies ChartConfig
+// const chartConfig = {
+//   available: {
+//     label: "Available",
+//     color: "hsl(var(--chart-2))",
+//   },
+// } satisfies ChartConfig
 
 const cpuChartConfig = {
   available: {
