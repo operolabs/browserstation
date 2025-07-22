@@ -25,7 +25,7 @@
 
 ## Quick Start
 
-![Browser‑agent demo](https://github.com/operolabs/.github/blob/main/static/browserstation.gif)
+![Browser‑agent demo](https://github.com/operolabs/.github/blob/main/static/browserstation-medqual.gif)
 
 <!-- https://github.com/user-attachments/assets/39753053-538b-4ada-b561-eec50a4f4769 -->
 
