@@ -9,8 +9,10 @@
     <a href="https://github.com/operolabs/browserstation/stargazers">
       <img src="https://img.shields.io/github/stars/operolabs/browserstation?style=social?cacheSeconds=1" alt="GitHub stars"/>
     </a>
-    <a href="https://x.com/operolabs" alt="Twitter account">
+    <a href="https://x.com/intent/user?screen_name=operolabs" alt="Twitter account">
         <img src="https://img.shields.io/twitter/follow/OperoLabs?style=social?cacheSeconds=1" /></a>
+    <a href="https://www.linkedin.com/company/opero-labs" alt="LinkedIn account">
+        <img src="https://custom-icon-badges.demolab.com/badge/LinkedIn-0A66C2?logo=linkedin-white&logoColor=fff" /></a>
     <a href="https://github.com/operolabs/browserstation/blob/main/LICENSE">
       <img src="https://img.shields.io/github/license/operolabs/browserstation?cacheSeconds=1" alt="License"/>
     </a>
@@ -26,8 +28,6 @@
 ## Quick Start
 
 ![Browser‑agent demo](https://github.com/operolabs/.github/blob/main/static/browserstation-medqual.gif)
-
-<!-- https://github.com/user-attachments/assets/39753053-538b-4ada-b561-eec50a4f4769 -->
 
 
 ### 1. Prerequisites
