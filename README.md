@@ -25,6 +25,7 @@
 
 ## Quick Start
 
+![Browser‑agent demo](https://github.com/operolabs/browserstation/blob/main/assets/browserstation.gif)
 
 https://github.com/user-attachments/assets/39753053-538b-4ada-b561-eec50a4f4769
 
