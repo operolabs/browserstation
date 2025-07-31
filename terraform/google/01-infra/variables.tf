@@ -32,7 +32,7 @@ variable "kubernetes_version" {
 variable "head_node_machine_type" {
   description = "Machine type for Ray head node"
   type        = string
-  default     = "n2-standard-2"  # Equivalent to c5.large (2 vCPU, 8GB RAM)
+  default     = "n2-standard-2" # Equivalent to c5.large (2 vCPU, 8GB RAM)
 }
 
 variable "worker_node_machine_type" {
