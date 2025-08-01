@@ -221,3 +221,35 @@ tmp/
 temp/
 *.tmp
 *.temp
+
+# ========================================
+# Terraform files
+# ========================================
+# Terraform files
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+
+# Sensitive variable files
+*.auto.tfvars
+terraform.tfvars.backup
+*.tfvars.json
+
+# Terraform plans
+*.tfplan
+tfplan
+
+# Override files
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# CLI configuration files
+.terraformrc
+terraform.rc
+
+# Crash log files
+crash.log
+crash.*.log
