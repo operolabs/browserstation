@@ -27,9 +27,6 @@
 
 ## Quick Start
 
-![Browser‑agent demo](https://github.com/operolabs/.github/blob/main/static/browserstation-medqual.gif)
-
-
 ### 1. Prerequisites
 
 - [kubectl](https://kubernetes.io/docs/tasks/tools/) >= 1.23
