@@ -103,6 +103,9 @@ resource "google_container_cluster" "primary" {
     }
   }
 
+  # Deletion protection (defaults to true for safety)
+  deletion_protection = var.deletion_protection
+
   resource_labels = local.common_labels
 
   depends_on = [

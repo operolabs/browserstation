@@ -60,3 +60,9 @@ variable "network_cidr" {
   type        = string
   default     = "10.0.0.0/16"
 }
+
+variable "deletion_protection" {
+  description = "Whether to enable deletion protection on the GKE cluster. Set to false before destroying."
+  type        = bool
+  default     = true
+}

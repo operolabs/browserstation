@@ -76,6 +76,22 @@ worker_node_config = {
 }
 ```
 
+## Deletion Protection
+
+By default, the GKE cluster is created with deletion protection enabled to prevent accidental deletion. To destroy the cluster, you must first disable deletion protection:
+
+```hcl
+# terraform.tfvars
+deletion_protection = false
+```
+
+Then apply the change:
+```bash
+terraform apply -target=google_container_cluster.primary
+```
+
+After this, you can run `terraform destroy` or use the teardown script.
+
 ## Authentication
 
 The Docker build process uses `gcloud auth configure-docker` to authenticate with Artifact Registry. Ensure you're authenticated with Google Cloud:
