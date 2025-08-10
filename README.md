@@ -138,6 +138,8 @@ A full production deployment guide is available [here](./terraform/aws/README.md
 
 Before starting major work, please [check open issues](https://github.com/operolabs/browserstation/issues), or [open a new issue](https://github.com/operolabs/browserstation/issues/new) to discuss ideas or bugs.
 
+If you spot a bug, make sure to create an issue describing the bug in its entirety (including any terminal outputs) such that we can easily recreate your bug.
+
 Thank you for helping improve Browserstation!
 
 ## License
