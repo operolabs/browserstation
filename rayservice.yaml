@@ -18,6 +18,11 @@ spec:
             env:
             - name: RAY_memory_usage_threshold
               value: "0.95"
+            - name: BROWSERSTATION_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: browserstation-auth
+                  key: BROWSERSTATION_API_KEY
             ports:
             - containerPort: 8050
               name: http
