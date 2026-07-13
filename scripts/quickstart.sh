@@ -23,6 +23,13 @@ helm repo update
 helm upgrade --install kuberay-operator kuberay/kuberay-operator \
   --namespace ray-system --create-namespace --version 1.3.0 --wait
 
+if [[ $API_KEY ]]; then
+  kubectl create secret generic browserstation-auth \
+    --from-literal=BROWSERSTATION_API_KEY="$API_KEY" \
+    --namespace ray-system \
+    --dry-run=client -o yaml | kubectl apply -f -
+fi
+
 DOCKERFILE=$(
   [[ $ARCH == arm64 && -f Dockerfile.arm ]] && echo Dockerfile.arm \
   || echo Dockerfile.$ARCH
